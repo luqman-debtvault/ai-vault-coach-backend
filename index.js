@@ -24,7 +24,7 @@ app.get("/", (req, res) => {
 });
 
 app.post("/ask", async (req, res) => {
-  const userMessage = req.body.message;
+  const userMessage = req.body.question;
 
   try {
     const chat = await openai.chat.completions.create({
