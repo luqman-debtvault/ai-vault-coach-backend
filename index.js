@@ -2,8 +2,7 @@ import express from "express";
 import cors from "cors";
 import bodyParser from "body-parser";
 import OpenAI from "openai";
-import dotenv from "dotenv";
-dotenv.config();
+
 
 const app = express();
 const PORT = process.env.PORT || 8080;
