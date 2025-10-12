@@ -66,9 +66,9 @@ Be brief but helpful. If you're unsure how to respond, suggest asking the Vault 
 
   try {
     const chat = await openai.chat.completions.create({
-      model: "gpt-4",
-      messages,
-    });
+  model: "gpt-4o", // Use GPT‑4 Omni (newest general-access model)
+  messages,
+});
 
     const reply = chat.choices[0]?.message?.content?.trim() || "No reply generated.";
 
