@@ -25,21 +25,26 @@ app.get("/", (req, res) => {
   res.send("Vault Coach API is running.");
 });
 
-// 🧠 Main Coach Endpoint
+// 🧠 Main Coach Endpoint with Mini-Memory
+let conversationHistory = []; // Stores last 3 user messages
+
 app.post("/ask", async (req, res) => {
-  const userMessage = req.body.question || req.body.message; // ← supports both
+  const userMessage = req.body.question || req.body.message;
 
   if (!userMessage) {
     return res.status(400).json({ error: "Missing message input." });
   }
 
-  try {
-    const chat = await openai.chat.completions.create({
-      model: "gpt-4",
-      messages: [
-        {
-  role: "system",
-  content: `
+  // Keep last 3 messages only
+  conversationHistory.push({ role: "user", content: userMessage });
+  if (conversationHistory.length > 3) {
+    conversationHistory = conversationHistory.slice(-3);
+  }
+
+  const messages = [
+    {
+      role: "system",
+      content: `
 You are the AI Vault Coach — a supportive, practical financial guide who helps users build good saving habits, pay off debt, and stay motivated.
 
 Your tone is encouraging, empathetic, and goal-oriented — like a mix of a financial therapist and accountability partner.
@@ -55,13 +60,25 @@ Always assume they are using the DebtVault app, where users can:
 - Celebrate wins
 
 Be brief but helpful. If you're unsure how to respond, suggest asking the Vault Coach again in a more specific way.
-  `.trim()
-},
-        { role: "user", content: userMessage },
-      ],
+      `.trim()
+    },
+    ...conversationHistory // memory of last 3 user messages
+  ];
+
+  try {
+    const chat = await openai.chat.completions.create({
+      model: "gpt-4",
+      messages,
     });
 
     const reply = chat.choices[0]?.message?.content || "No reply generated.";
+
+    // Optionally store assistant reply too (for future back-and-forth memory)
+    conversationHistory.push({ role: "assistant", content: reply });
+    if (conversationHistory.length > 6) {
+      conversationHistory = conversationHistory.slice(-6); // keep max 3 pairs
+    }
+
     res.json({ reply });
   } catch (err) {
     console.error("❌ OpenAI error:", err);
