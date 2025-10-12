@@ -6,26 +6,25 @@ import OpenAI from "openai";
 const app = express();
 const PORT = process.env.PORT || 8080;
 
-// 🛡️ CORS: Only allow your frontend
+// 🔐 Middleware
 app.use(cors({
   origin: "https://www.debtvault.co",
   methods: ["GET", "POST", "OPTIONS"],
   allowedHeaders: ["Content-Type"],
 }));
-
 app.use(bodyParser.json());
 
-// 🧠 OpenAI Client
+// 🧠 Initialize OpenAI
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
-// ✅ Root Route (for Railway status)
+// ✅ Root route
 app.get("/", (req, res) => {
   res.send("Vault Coach API is running.");
 });
 
-// 🧠 Mini-memory (last 3 user + 3 assistant messages)
+// 🧠 Mini memory for short-term context
 let conversationHistory = [];
 
 app.post("/ask", async (req, res) => {
@@ -35,10 +34,10 @@ app.post("/ask", async (req, res) => {
     return res.status(400).json({ error: "Missing message input." });
   }
 
-  // ➕ Add user message to memory
+  // Save last 3 user messages
   conversationHistory.push({ role: "user", content: userMessage });
-  if (conversationHistory.length > 6) {
-    conversationHistory = conversationHistory.slice(-6); // keep last 3 pairs
+  if (conversationHistory.length > 3) {
+    conversationHistory = conversationHistory.slice(-3);
   }
 
   const messages = [
@@ -73,9 +72,6 @@ Be brief but helpful. If you're unsure how to respond, suggest asking the Vault 
 
     const reply = chat.choices[0]?.message?.content?.trim() || "No reply generated.";
 
-    console.log("🤖 GPT Reply:", reply);
-
-    // ➕ Store assistant reply to memory
     conversationHistory.push({ role: "assistant", content: reply });
     if (conversationHistory.length > 6) {
       conversationHistory = conversationHistory.slice(-6);
@@ -83,13 +79,14 @@ Be brief but helpful. If you're unsure how to respond, suggest asking the Vault 
 
     res.json({ reply });
   } catch (err) {
-    console.error("❌ OpenAI error:", err.response?.data || err.message || err);
+    console.error("❌ OpenAI error:", err); // ✅ Debugging aid
     res.status(500).json({ error: "OpenAI failed to respond." });
   }
 });
 
-// 🚀 Start server
+// 🚀 Launch server
 app.listen(PORT, "0.0.0.0", () => {
   console.log(`✅ AI Vault Coach running on port ${PORT}`);
 });
+
 
