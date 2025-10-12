@@ -25,8 +25,8 @@ app.get("/", (req, res) => {
   res.send("Vault Coach API is running.");
 });
 
-// 🧠 Main Coach Endpoint with Mini-Memory
-let conversationHistory = []; // Stores last 3 user messages
+// 🧠 Mini-memory (last 3 user + 3 assistant messages)
+let conversationHistory = [];
 
 app.post("/ask", async (req, res) => {
   const userMessage = req.body.question || req.body.message;
@@ -35,10 +35,10 @@ app.post("/ask", async (req, res) => {
     return res.status(400).json({ error: "Missing message input." });
   }
 
-  // Keep last 3 messages only
+  // ➕ Add user message to memory
   conversationHistory.push({ role: "user", content: userMessage });
-  if (conversationHistory.length > 3) {
-    conversationHistory = conversationHistory.slice(-3);
+  if (conversationHistory.length > 6) {
+    conversationHistory = conversationHistory.slice(-6); // keep last 3 pairs
   }
 
   const messages = [
@@ -62,7 +62,7 @@ Always assume they are using the DebtVault app, where users can:
 Be brief but helpful. If you're unsure how to respond, suggest asking the Vault Coach again in a more specific way.
       `.trim()
     },
-    ...conversationHistory // memory of last 3 user messages
+    ...conversationHistory
   ];
 
   try {
@@ -71,17 +71,19 @@ Be brief but helpful. If you're unsure how to respond, suggest asking the Vault 
       messages,
     });
 
-    const reply = chat.choices[0]?.message?.content || "No reply generated.";
+    const reply = chat.choices[0]?.message?.content?.trim() || "No reply generated.";
 
-    // Optionally store assistant reply too (for future back-and-forth memory)
+    console.log("🤖 GPT Reply:", reply);
+
+    // ➕ Store assistant reply to memory
     conversationHistory.push({ role: "assistant", content: reply });
     if (conversationHistory.length > 6) {
-      conversationHistory = conversationHistory.slice(-6); // keep max 3 pairs
+      conversationHistory = conversationHistory.slice(-6);
     }
 
     res.json({ reply });
   } catch (err) {
-    console.error("❌ OpenAI error:", err);
+    console.error("❌ OpenAI error:", err.response?.data || err.message || err);
     res.status(500).json({ error: "OpenAI failed to respond." });
   }
 });
@@ -90,3 +92,4 @@ Be brief but helpful. If you're unsure how to respond, suggest asking the Vault 
 app.listen(PORT, "0.0.0.0", () => {
   console.log(`✅ AI Vault Coach running on port ${PORT}`);
 });
+
