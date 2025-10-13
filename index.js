@@ -29,21 +29,14 @@ let conversationHistory = [];
 
 app.post("/ask", async (req, res) => {
   const userMessage = req.body.question || req.body.message;
+  const mode = req.body.mode || "Normal";
 
   if (!userMessage) {
     return res.status(400).json({ error: "Missing message input." });
   }
 
-  // Save last 3 user messages
-  conversationHistory.push({ role: "user", content: userMessage });
-  if (conversationHistory.length > 3) {
-    conversationHistory = conversationHistory.slice(-3);
-  }
-
-  const messages = [
-    {
-      role: "system",
-      content: `
+  // 🧠 Update system prompt based on mode
+  let systemPrompt = `
 You are the AI Vault Coach — a supportive, practical financial guide who helps users build good saving habits, pay off debt, and stay motivated.
 
 Your tone is encouraging, empathetic, and goal-oriented — like a mix of a financial therapist and accountability partner.
@@ -59,29 +52,49 @@ Always assume they are using the DebtVault app, where users can:
 - Celebrate wins
 
 Be brief but helpful. If you're unsure how to respond, suggest asking the Vault Coach again in a more specific way.
-      `.trim()
-    },
+`.trim();
+
+  if (mode === "Strict") {
+    systemPrompt = `
+You are a strict financial advisor who gives tough love. Be direct, firm, and focused on results. No fluff. Make the user take action. If they’re wasting money, call it out. Don’t be mean — just brutally honest. Always tie advice to their goals in the DebtVault app.
+`.trim();
+  } else if (mode === "Friendly") {
+    systemPrompt = `
+You are a warm, supportive financial coach who sounds like a kind friend. Be very encouraging, uplifting, and use relatable examples. Never judge. Always start with reassurance. End with a small suggestion or gentle push. Assume the user is using DebtVault to save daily for things like rent, credit cards, or emergencies.
+`.trim();
+  }
+
+  // Save user message
+  conversationHistory.push({ role: "user", content: userMessage });
+  if (conversationHistory.length > 3) {
+    conversationHistory = conversationHistory.slice(-3);
+  }
+
+  const messages = [
+    { role: "system", content: systemPrompt },
     ...conversationHistory
   ];
 
   try {
-    const chat = await openai.chat.completions.create({
-  model: "gpt-4o", // Use GPT‑4 Omni (newest general-access model)
-  messages,
-});
+  const completion = await openai.chat.completions.create({
+    model: "gpt-4o", // or "gpt-3.5-turbo"
+    messages,
+    temperature: 0.7
+  });
 
-    const reply = chat.choices[0]?.message?.content?.trim() || "No reply generated.";
+  const reply = completion.choices[0]?.message?.content?.trim() || "No reply generated.";
 
-    conversationHistory.push({ role: "assistant", content: reply });
-    if (conversationHistory.length > 6) {
-      conversationHistory = conversationHistory.slice(-6);
-    }
-
-    res.json({ reply });
-  } catch (err) {
-    console.error("❌ OpenAI error:", err); // ✅ Debugging aid
-    res.status(500).json({ error: "OpenAI failed to respond." });
+  // Save reply
+  conversationHistory.push({ role: "assistant", content: reply });
+  if (conversationHistory.length > 6) {
+    conversationHistory = conversationHistory.slice(-6);
   }
+
+  res.json({ reply });
+} catch (err) {
+  console.error("❌ OpenAI error:", err);
+  res.status(500).json({ error: "OpenAI failed to respond." });
+}
 });
 
 // 🚀 Launch server
