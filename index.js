@@ -77,6 +77,45 @@ Be brief but helpful. If you're unsure how to respond, suggest asking the Vault 
   }
 });
 
+// ✅ Streaming response endpoint
+app.post("/ask-stream", async (req, res) => {
+  const { question, systemPrompt = "", memory = "", mode = "Normal" } = req.body;
+
+  if (!question) {
+    return res.status(400).send("Missing question.");
+  }
+
+  const messages = [
+    { role: "system", content: systemPrompt },
+    ...(memory
+      ? [{ role: "system", content: `Here is recent user context:\n${memory}` }]
+      : []),
+    { role: "user", content: question }
+  ];
+
+  try {
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages,
+      temperature: 0.7,
+      stream: true,
+    });
+
+    res.setHeader("Content-Type", "text/plain; charset=utf-8");
+    res.setHeader("Transfer-Encoding", "chunked");
+
+    for await (const chunk of completion) {
+      const content = chunk.choices?.[0]?.delta?.content || "";
+      res.write(content);
+    }
+
+    res.end();
+  } catch (err) {
+    console.error("❌ Streaming error:", err);
+    res.status(500).send("Error streaming response.");
+  }
+});
+
 // 🚀 Launch server
 app.listen(PORT, "0.0.0.0", () => {
   console.log(`✅ AI Vault Coach running on port ${PORT}`);
