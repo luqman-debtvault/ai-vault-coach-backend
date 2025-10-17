@@ -28,15 +28,19 @@ app.get("/", (req, res) => {
 let conversationHistory = [];
 
 app.post("/ask", async (req, res) => {
-  const { question, mode = "Normal", memory = "", systemPrompt: customPrompt } = req.body;
+  const { question, mode = "Normal", memory = "", systemPrompt: customPrompt, vaultType = "General" } = req.body;
 
   if (!question) {
     return res.status(400).json({ error: "Missing question." });
   }
 
   // ✅ Use frontend-passed systemPrompt if available
-  let systemPrompt = customPrompt || `
+ let vaultType = body.vaultType || "General";
+
+let systemPrompt = customPrompt || `
 You are the AI Vault Coach — a supportive, practical financial guide who helps users build good saving habits, pay off debt, and stay motivated.
+
+The user is currently asking about their "${vaultType}" vault.
 
 Your tone is encouraging, empathetic, and goal-oriented — like a mix of a financial therapist and accountability partner.
 
