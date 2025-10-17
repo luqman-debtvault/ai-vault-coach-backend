@@ -35,8 +35,6 @@ app.post("/ask", async (req, res) => {
   }
 
   // ✅ Use frontend-passed systemPrompt if available
- let vaultType = body.vaultType || "General";
-
 let systemPrompt = customPrompt || `
 You are the AI Vault Coach — a supportive, practical financial guide who helps users build good saving habits, pay off debt, and stay motivated.
 
