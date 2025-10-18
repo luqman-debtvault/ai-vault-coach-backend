@@ -2,6 +2,13 @@ import express from "express";
 import cors from "cors";
 import bodyParser from "body-parser";
 import OpenAI from "openai";
+import { createClient } from "@supabase/supabase-js";
+
+const supabase = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_ROLE_KEY
+);
+
 
 const app = express();
 const PORT = process.env.PORT || 8080;
@@ -115,6 +122,33 @@ app.post("/ask-stream", async (req, res) => {
   } catch (err) {
     console.error("❌ Streaming error:", err);
     res.status(500).send("Error streaming response.");
+  }
+});
+
+app.post("/get-nudge", async (req, res) => {
+  const { user_id } = req.body;
+
+  if (!user_id) {
+    return res.status(400).json({ error: "Missing user_id" });
+  }
+
+  try {
+    // Replace this logic later with smarter AI nudges if needed
+    const dailyNudges = [
+      "You’re only one small deposit away from keeping your streak alive.",
+      "Small steps add up — drop $1 into your Rent vault today.",
+      "Missing a day is okay, but don’t make it two.",
+      "Momentum beats motivation. Just act once!",
+      "Consistency > big deposits. Tap that Add button 💪",
+    ];
+
+    const random = Math.floor(Math.random() * dailyNudges.length);
+    const message = dailyNudges[random];
+
+    res.json({ message });
+  } catch (err) {
+    console.error("❌ Nudge generation error:", err);
+    res.status(500).json({ error: "Nudge fetch failed." });
   }
 });
 
