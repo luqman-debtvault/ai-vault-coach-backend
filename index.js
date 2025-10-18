@@ -1,4 +1,4 @@
-import 'dotenv/config';
+import 'dotenv/config'; // ✅ required to load Railway's env vars
 import express from "express";
 import cors from "cors";
 import bodyParser from "body-parser";
@@ -9,7 +9,6 @@ const supabase = createClient(
   process.env.SUPABASE_URL,
   process.env.SUPABASE_SERVICE_KEY
 );
-
 
 const app = express();
 const PORT = process.env.PORT || 8080;
