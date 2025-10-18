@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import express from "express";
 import cors from "cors";
 import bodyParser from "body-parser";
@@ -6,7 +7,7 @@ import { createClient } from "@supabase/supabase-js";
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY // or anon if just read
+  process.env.SUPABASE_SERVICE_KEY
 );
 
 
