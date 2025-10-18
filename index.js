@@ -2,6 +2,13 @@ import express from "express";
 import cors from "cors";
 import bodyParser from "body-parser";
 import OpenAI from "openai";
+import { createClient } from "@supabase/supabase-js";
+
+const supabase = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_ROLE_KEY // or anon if just read
+);
+
 
 const app = express();
 const PORT = process.env.PORT || 8080;
@@ -118,30 +125,78 @@ app.post("/ask-stream", async (req, res) => {
   }
 });
 
+// ✅ Smart Vault Nudge (Level 19)
 app.post("/get-nudge", async (req, res) => {
   const { user_id } = req.body;
 
   if (!user_id) {
-    return res.status(400).json({ error: "Missing user_id" });
+    return res.status(400).json({ error: "Missing user_id." });
   }
 
   try {
-    // Replace this logic later with smarter AI nudges if needed
-    const dailyNudges = [
-      "You’re only one small deposit away from keeping your streak alive.",
-      "Small steps add up — drop $1 into your Rent vault today.",
-      "Missing a day is okay, but don’t make it two.",
-      "Momentum beats motivation. Just act once!",
-      "Consistency > big deposits. Tap that Add button 💪",
-    ];
+    // 1. Fetch vaults
+    const { data: vaults, error } = await supabase
+      .from("vaults")
+      .select("*")
+      .eq("user_id", user_id)
+      .eq("archived", false);
 
-    const random = Math.floor(Math.random() * dailyNudges.length);
-    const message = dailyNudges[random];
+    if (error) {
+      console.error("❌ Supabase error fetching vaults:", error);
+      return res.status(500).json({ error: "Failed to fetch vaults." });
+    }
 
-    res.json({ message });
+    if (!vaults || vaults.length === 0) {
+      return res.json({ nudge: "You don’t have any vaults yet. Create one and start saving today 💰." });
+    }
+
+    // 2. Pick best vault to nudge
+    let vault =
+      vaults.find(v => v.streak >= 5) ||
+      vaults.find(v => v.vault_type === "Credit Card") ||
+      vaults[0];
+
+    const {
+      vault_type = "Vault",
+      streak = 0,
+      current_balance = 0,
+      target_amount = 1,
+    } = vault;
+
+    const progress = Math.round((current_balance / target_amount) * 100);
+
+    // 3. Emoji map
+    const emojiMap = {
+      "Rent": "🏠",
+      "Credit Card": "💳",
+      "Emergency": "🚨",
+      "Bills": "🧾",
+      "Car": "🚗",
+      "Custom": "🎯",
+      "General": "💰",
+    };
+    const emoji = emojiMap[vault_type] || "📦";
+
+    // 4. Smart Nudge Logic
+    let nudge = "";
+
+    if (progress < 15) {
+      nudge = `Let’s kickstart your ${emoji} ${vault_type} vault — even $1 today builds momentum.`;
+    } else if (streak >= 5) {
+      nudge = `🔥 You're on a ${streak}-day streak in your ${emoji} ${vault_type} vault. Keep it alive!`;
+    } else if (progress >= 90) {
+      nudge = `🎯 You're ${100 - progress}% away from finishing your ${emoji} ${vault_type} vault. Almost there!`;
+    } else if (vault_type === "Credit Card" && progress >= 50) {
+      nudge = `👏 Halfway to crushing your ${emoji} Credit Card vault. Every day makes a difference.`;
+    } else {
+      nudge = `Your ${emoji} ${vault_type} vault is growing. Add a little today to boost your streak. 🌱`;
+    }
+
+    return res.json({ nudge });
+
   } catch (err) {
     console.error("❌ Nudge generation error:", err);
-    res.status(500).json({ error: "Nudge fetch failed." });
+    return res.status(500).json({ error: "Something went wrong generating the nudge." });
   }
 });
 
