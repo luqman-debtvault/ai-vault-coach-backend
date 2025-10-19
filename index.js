@@ -201,6 +201,56 @@ app.post("/get-nudge", async (req, res) => {
   }
 });
 
+// 🎯 New: Smarter nudge per vault (Level 19)
+app.post("/get-vault-nudge", async (req, res) => {
+  const { user_id, vault_id, vault_type } = req.body;
+
+  if (!user_id || !vault_id || !vault_type) {
+    return res.status(400).json({ error: "Missing required fields." });
+  }
+
+  try {
+    // 1. Fetch last nudge for this vault
+    const { data: vault, error: vaultError } = await supabase
+      .from("vaults")
+      .select("last_nudge")
+      .eq("id", vault_id)
+      .single();
+
+    if (vaultError) throw vaultError;
+    const previousNudge = vault?.last_nudge?.trim() || "";
+
+    // 2. Create prompt for OpenAI
+    const prompt = `Give a short motivational nudge for someone saving for "${vault_type}".`;
+
+    const chatResponse = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages: [{ role: "user", content: prompt }],
+    });
+
+    const newNudge = chatResponse.choices[0]?.message?.content?.trim();
+
+    // 3. If same, return without updating
+    if (newNudge === previousNudge) {
+      console.log("🔁 Same nudge. Skipping save.");
+      return res.json({ nudge: newNudge });
+    }
+
+    // 4. Save to vault
+    await supabase
+      .from("vaults")
+      .update({ last_nudge: newNudge })
+      .eq("id", vault_id);
+
+    console.log("✅ New nudge saved:", newNudge);
+    return res.json({ nudge: newNudge });
+
+  } catch (err) {
+    console.error("❌ Error in get-vault-nudge:", err.message);
+    return res.status(500).json({ error: "Failed to generate nudge" });
+  }
+});
+
 // 🚀 Launch server
 app.listen(PORT, "0.0.0.0", () => {
   console.log(`✅ AI Vault Coach running on port ${PORT}`);
