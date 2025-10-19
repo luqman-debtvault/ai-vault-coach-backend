@@ -3,6 +3,9 @@ import express from "express";
 import cors from "cors";
 import bodyParser from "body-parser";
 import OpenAI from "openai";
+console.log("🔧 SUPABASE_URL:", process.env.SUPABASE_URL);
+console.log("🔧 SUPABASE_SERVICE_KEY:", process.env.SUPABASE_SERVICE_KEY?.slice(0, 10) + "...");
+
 import { createClient } from "@supabase/supabase-js";
 
 const supabase = createClient(
